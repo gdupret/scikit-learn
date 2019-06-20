@@ -89,4 +89,5 @@ def maybe_cythonize_extensions(top_path, config):
         config.ext_modules = cythonize(
             config.ext_modules,
             compile_time_env={'SKLEARN_OPENMP_SUPPORTED': with_openmp},
-            compiler_directives={'language_level': 3})
+            compiler_directives={'language_level': 3},
+            gdb_debug=True)

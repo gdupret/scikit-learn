@@ -7,6 +7,9 @@
 #
 # cython: boundscheck=False, wraparound=False
 
+from libc.stdio cimport printf
+from libc.stdlib cimport rand
+
 import array
 from cpython cimport array
 cimport cython
@@ -22,9 +25,12 @@ np.import_array()
 cdef bytes COMMA = u','.encode('ascii')
 cdef bytes COLON = u':'.encode('ascii')
 
+cdef extern from "limits.h":
+    int RAND_MAX
 
 def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
-                        bint query_id, long long offset, long long length):
+                        bint query_id, long long offset, long long length,
+                        float sampling_rate):
     cdef array.array data, indices, indptr
     cdef bytes line
     cdef char *hash_ptr
@@ -34,7 +40,20 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
     cdef bytes qid_prefix = b'qid'
     cdef Py_ssize_t n_features
     cdef long long offset_max = offset + length if length > 0 else -1
+    cdef float sampling_threshold = RAND_MAX * sampling_rate
 
+    if sampling_rate <= 0.0:
+        raise ValueError("Invalid sampling rate: " % sampling_rate)
+    sample_p = sampling_rate < 1.0
+    
+    print("load svm file")
+    if sample_p:
+        print("sampling rate: " + str(sampling_rate))
+    else:
+        print("don't sample")
+    printf("multilabel: %d\n", multilabel)
+    printf("n features: %d\n", n_features)
+    
     # Special-case float32 but use float64 for everything else;
     # the Python code will do further conversions.
     if dtype == np.float32:
@@ -69,6 +88,9 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
         if len(line_parts) == 0:
             continue
 
+        if sample_p and rand() > sampling_threshold:
+            continue
+        
         target, features = line_parts[0], line_parts[1:]
         if multilabel:
             if COLON in target:
@@ -80,7 +102,10 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
         else:
             array.resize_smart(labels, len(labels) + 1)
             labels[len(labels) - 1] = float(target)
-
+            # print("labels:") # labels are the target values
+            # for l in labels:
+            #     print(l)
+            
         prev_idx = -1
         n_features = len(features)
         if n_features and features[0].startswith(qid_prefix):
@@ -93,6 +118,7 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
 
         for i in range(0, n_features):
             idx_s, value = features[i].split(COLON, 1)
+            # print("id:" + str(idx_s) + " -> value:" + str(value))
             idx = int(idx_s)
             if idx < 0 or not zero_based and idx == 0:
                 raise ValueError(
