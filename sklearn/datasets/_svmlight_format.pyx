@@ -30,7 +30,7 @@ cdef extern from "limits.h":
 
 def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
                         bint query_id, long long offset, long long length,
-                        float sampling_rate):
+                        float sampling_rate, np.ndarray[np.int_t, ndim=1] fis):
     cdef array.array data, indices, indptr
     cdef bytes line
     cdef char *hash_ptr
@@ -41,10 +41,20 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
     cdef Py_ssize_t n_features
     cdef long long offset_max = offset + length if length > 0 else -1
     cdef float sampling_threshold = RAND_MAX * sampling_rate
-
+    
+    if fis is None:
+        print("no feature indices")
+    else:
+        print("array lenght: " + str(len(fis)))
+    
     if sampling_rate <= 0.0:
         raise ValueError("Invalid sampling rate: " % sampling_rate)
-    sample_p = sampling_rate < 1.0
+    cdef int sample_p = sampling_rate < 1.0
+    if fis is None:
+        index_set = None
+    else:
+        index_set = set(fis)
+        print("index set: " + ",".join([str(i) for i in index_set]))
     
     print("load svm file")
     if sample_p:
@@ -118,8 +128,13 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
 
         for i in range(0, n_features):
             idx_s, value = features[i].split(COLON, 1)
-            # print("id:" + str(idx_s) + " -> value:" + str(value))
             idx = int(idx_s)
+            print("id:" + str(idx) + " -> value:" + str(value))
+            if index_set is None or idx in index_set:
+                print("accept index " + str(idx_s))
+            else:
+                print("reject index " + str(idx_s))
+                continue
             if idx < 0 or not zero_based and idx == 0:
                 raise ValueError(
                     "Invalid index %d in SVMlight/LibSVM data file." % idx)
