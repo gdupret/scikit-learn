@@ -185,17 +185,17 @@ def _gen_open(f):
 
 def _open_and_load(f, dtype, multilabel, zero_based, query_id,
                    sampling_rate, fis, offset=0, length=-1):
-        
+    if not fis is None:
+        fis = np.array(fis)
     if hasattr(f, "read"):
         actual_dtype, data, ind, indptr, labels, query = \
             _load_svmlight_file(f, dtype, multilabel, zero_based, query_id,
-                                offset, length, sampling_rate, np.array(fis))
+                                offset, length, sampling_rate, fis)
     else:
         with closing(_gen_open(f)) as f:
             actual_dtype, data, ind, indptr, labels, query = \
                 _load_svmlight_file(f, dtype, multilabel, zero_based, query_id,
-                                    offset, length, sampling_rate, 
-                                    np.array(fis))
+                                    offset, length, sampling_rate, fis)
 
     # convert from array.array, give data the right dtype
     if not multilabel:

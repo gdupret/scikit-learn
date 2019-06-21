@@ -42,27 +42,14 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
     cdef long long offset_max = offset + length if length > 0 else -1
     cdef float sampling_threshold = RAND_MAX * sampling_rate
     
-    if fis is None:
-        print("no feature indices")
-    else:
-        print("array lenght: " + str(len(fis)))
-    
     if sampling_rate <= 0.0:
         raise ValueError("Invalid sampling rate: " % sampling_rate)
     cdef int sample_p = sampling_rate < 1.0
+
     if fis is None:
         index_set = None
     else:
         index_set = set(fis)
-        print("index set: " + ",".join([str(i) for i in index_set]))
-    
-    print("load svm file")
-    if sample_p:
-        print("sampling rate: " + str(sampling_rate))
-    else:
-        print("don't sample")
-    printf("multilabel: %d\n", multilabel)
-    printf("n features: %d\n", n_features)
     
     # Special-case float32 but use float64 for everything else;
     # the Python code will do further conversions.
@@ -112,9 +99,6 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
         else:
             array.resize_smart(labels, len(labels) + 1)
             labels[len(labels) - 1] = float(target)
-            # print("labels:") # labels are the target values
-            # for l in labels:
-            #     print(l)
             
         prev_idx = -1
         n_features = len(features)
@@ -129,12 +113,7 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
         for i in range(0, n_features):
             idx_s, value = features[i].split(COLON, 1)
             idx = int(idx_s)
-            print("id:" + str(idx) + " -> value:" + str(value))
-            if index_set is None or idx in index_set:
-                print("accept index " + str(idx_s))
-            else:
-                print("reject index " + str(idx_s))
-                continue
+            # print("id:" + str(idx) + " -> value:" + str(value))
             if idx < 0 or not zero_based and idx == 0:
                 raise ValueError(
                     "Invalid index %d in SVMlight/LibSVM data file." % idx)
@@ -142,11 +121,12 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
                 raise ValueError("Feature indices in SVMlight/LibSVM data "
                                  "file should be sorted and unique.")
 
-            array.resize_smart(indices, len(indices) + 1)
-            indices[len(indices) - 1] = idx
+            if index_set is None or idx in index_set:
+                array.resize_smart(indices, len(indices) + 1)
+                indices[len(indices) - 1] = idx
 
-            array.resize_smart(data, len(data) + 1)
-            data[len(data) - 1] = float(value)
+                array.resize_smart(data, len(data) + 1)
+                data[len(data) - 1] = float(value)
 
             prev_idx = idx
 
