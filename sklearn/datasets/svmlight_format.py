@@ -313,6 +313,17 @@ def load_svmlight_files(files, n_features=None, dtype=np.float64,
         raise ValueError(
             "n_features is required when offset or length is specified.")
 
+    if (sampling_rate < 1) and zero_based == "auto":
+        # there is no guarantee that a row with index 0 will be read when
+        # sampling, so disable heuristic
+        raise ValueError("zero based must be set if sampling rows")
+    
+    if zero_based == "auto" and (not fis is None):
+        raise ValueError(
+            "zero based must be set if selecting features while reading " + 
+            "input file")
+        
+
     r = [_open_and_load(f, dtype, multilabel, bool(zero_based), bool(query_id),
                         sampling_rate, fis, offset=offset, length=length)
          for f in files]
