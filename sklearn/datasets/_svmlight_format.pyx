@@ -7,7 +7,6 @@
 #
 # cython: boundscheck=False, wraparound=False
 
-from libc.stdio cimport printf
 from libc.stdlib cimport rand
 
 import array
@@ -113,7 +112,6 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
         for i in range(0, n_features):
             idx_s, value = features[i].split(COLON, 1)
             idx = int(idx_s)
-            # print("id:" + str(idx) + " -> value:" + str(value))
             if idx < 0 or not zero_based and idx == 0:
                 raise ValueError(
                     "Invalid index %d in SVMlight/LibSVM data file." % idx)
