@@ -44,7 +44,7 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
     
     if sampling_rate <= 0.0:
         raise ValueError("Invalid sampling rate: " % sampling_rate)
-    cdef int sample_p = sampling_rate < 1.0
+    cdef int sample_p = 1 if sampling_rate < 1.0 else 0
 
     if fis is None:
         index_set = None
@@ -85,52 +85,50 @@ def _load_svmlight_file(f, dtype, bint multilabel, bint zero_based,
         if len(line_parts) == 0:
             continue
 
-        if sample_p and rand() > sampling_threshold:
-            continue
-        
-        target, features = line_parts[0], line_parts[1:]
-        if multilabel:
-            if COLON in target:
-                target, features = [], line_parts[0:]
+        if sample_p == 0 or rand() < sampling_threshold:
+            target, features = line_parts[0], line_parts[1:]
+            if multilabel:
+                if COLON in target:
+                    target, features = [], line_parts[0:]
+                else:
+                    target = [float(y) for y in target.split(COMMA)]
+                target.sort()
+                labels.append(tuple(target))
             else:
-                target = [float(y) for y in target.split(COMMA)]
-            target.sort()
-            labels.append(tuple(target))
-        else:
-            array.resize_smart(labels, len(labels) + 1)
-            labels[len(labels) - 1] = float(target)
-            
-        prev_idx = -1
-        n_features = len(features)
-        if n_features and features[0].startswith(qid_prefix):
-            _, value = features[0].split(COLON, 1)
-            if query_id:
-                query.resize(len(query) + 1)
-                query[len(query) - 1] = np.int64(value)
-            features.pop(0)
-            n_features -= 1
+                array.resize_smart(labels, len(labels) + 1)
+                labels[len(labels) - 1] = float(target)
+                
+            prev_idx = -1
+            n_features = len(features)
+            if n_features and features[0].startswith(qid_prefix):
+                _, value = features[0].split(COLON, 1)
+                if query_id:
+                    query.resize(len(query) + 1)
+                    query[len(query) - 1] = np.int64(value)
+                features.pop(0)
+                n_features -= 1
+    
+            for i in range(0, n_features):
+                idx_s, value = features[i].split(COLON, 1)
+                idx = int(idx_s)
+                if idx < 0 or not zero_based and idx == 0:
+                    raise ValueError(
+                        "Invalid index %d in SVMlight/LibSVM data file." % idx)
+                if idx <= prev_idx:
+                    raise ValueError("Feature indices in SVMlight/LibSVM data "
+                                     "file should be sorted and unique.")
+    
+                if index_set is None or idx in index_set:
+                    array.resize_smart(indices, len(indices) + 1)
+                    indices[len(indices) - 1] = idx
+    
+                    array.resize_smart(data, len(data) + 1)
+                    data[len(data) - 1] = float(value)
+    
+                prev_idx = idx
 
-        for i in range(0, n_features):
-            idx_s, value = features[i].split(COLON, 1)
-            idx = int(idx_s)
-            # print("id:" + str(idx) + " -> value:" + str(value))
-            if idx < 0 or not zero_based and idx == 0:
-                raise ValueError(
-                    "Invalid index %d in SVMlight/LibSVM data file." % idx)
-            if idx <= prev_idx:
-                raise ValueError("Feature indices in SVMlight/LibSVM data "
-                                 "file should be sorted and unique.")
-
-            if index_set is None or idx in index_set:
-                array.resize_smart(indices, len(indices) + 1)
-                indices[len(indices) - 1] = idx
-
-                array.resize_smart(data, len(data) + 1)
-                data[len(data) - 1] = float(value)
-
-            prev_idx = idx
-
-        # increment index pointer array size
+        # increment index pointer array size even when the row is not sampled
+        # in order to maintain the row number
         array.resize_smart(indptr, len(indptr) + 1)
         indptr[len(indptr) - 1] = len(data)
 

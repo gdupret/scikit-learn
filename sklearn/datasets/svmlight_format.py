@@ -120,13 +120,13 @@ def load_svmlight_file(f, n_features=None, dtype=np.float64,
     length : integer, optional, default -1
         If strictly positive, stop reading any new line of data once the
         position in the file has reached the (offset + length) bytes threshold.
-    
+
     sampling_rate : float, optional, default 1.0
-        Select randomly rows from the input file. This is useful when extracting
-        statistics from a very large libsvm file.
+        Select randomly rows from the input file. This is useful when
+        extracting statistics from a very large libsvm file.
 
     fis : array of indices, optional, default=None
-        List of feature indices to be included. If None, all features are 
+        List of feature indices to be included. If None, all features are
         selected
 
     Returns
@@ -185,7 +185,7 @@ def _gen_open(f):
 
 def _open_and_load(f, dtype, multilabel, zero_based, query_id,
                    sampling_rate, fis, offset=0, length=-1):
-    if not fis is None:
+    if fis is not None:
         fis = np.array(fis)
     if hasattr(f, "read"):
         actual_dtype, data, ind, indptr, labels, query = \
@@ -275,15 +275,15 @@ def load_svmlight_files(files, n_features=None, dtype=np.float64,
     length : integer, optional, default -1
         If strictly positive, stop reading any new line of data once the
         position in the file has reached the (offset + length) bytes threshold.
-        
+
     sampling_rate : float, optional, default 1.0
-        Select randomly rows from the input file. This is useful when extracting
-        statistics from a very large libsvm file.
+        Select randomly rows from the input file. This is useful when
+        extracting statistics from a very large libsvm file.
 
     fis : array of indices, optional, default=None
-        List of feature indices to be included. If None, all features are 
+        List of feature indices to be included. If None, all features are
         selected
-        
+
     Returns
     -------
     [X1, y1, ..., Xn, yn]
@@ -317,12 +317,11 @@ def load_svmlight_files(files, n_features=None, dtype=np.float64,
         # there is no guarantee that a row with index 0 will be read when
         # sampling, so disable heuristic
         raise ValueError("zero based must be set if sampling rows")
-    
-    if zero_based == "auto" and (not fis is None):
+
+    if zero_based == "auto" and (fis is not None):
         raise ValueError(
-            "zero based must be set if selecting features while reading " + 
+            "zero based must be set if selecting features while reading " +
             "input file")
-        
 
     r = [_open_and_load(f, dtype, multilabel, bool(zero_based), bool(query_id),
                         sampling_rate, fis, offset=offset, length=length)
